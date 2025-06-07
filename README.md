@@ -20,3 +20,7 @@ DX11
 Shaders
 Multi textures GTT NTF3-NTF7
 Single textures DXT NTF3-NTF7
+
+![image](https://github.com/user-attachments/assets/aa284a70-25a9-4613-aeed-7d232ecd80c8)
+![image](https://github.com/user-attachments/assets/a123d2e7-e7a1-4e89-bfd3-9ade5da25b73)
+![image](https://github.com/user-attachments/assets/13130342-fd88-4662-9f0e-c8c446ccc22c)
