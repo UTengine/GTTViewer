@@ -1,2 +1,8 @@
 *.pdb
 *.obj
+*.tlog
+*.ipdb
+*.log
+*.idb
+MyTestApp/x64/Release/MyTestApp.vcxproj.FileListAbsolute.txt
+MyTestApp/x64/Debug/MyTestApp.vcxproj.FileListAbsolute.txt
