@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>MyTestApp.ico</file>
+    </qresource>
+</RCC>
