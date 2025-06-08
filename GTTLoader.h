@@ -20,6 +20,7 @@ public:
 
 private:
     static DXGI_FORMAT ConvertToDXGIFormat(uint32_t d3dFormat);
-    static std::vector<uint8_t> ConvertA4R4G4B4ToR8G8B8A8(const uint8_t* src, uint32_t width, uint32_t height);
+    static std::vector<uint8_t> ConvertX8R8G8B8ToR8G8B8A8(const uint8_t* src, uint32_t width, uint32_t height);
+    static std::vector<uint8_t> ConvertA1R5G5B5ToR8G8B8A8(const uint8_t* src, uint32_t width, uint32_t height);
     static uint32_t CalculateMipLevels(uint32_t width, uint32_t height, bool hasMips);
 };

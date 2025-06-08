@@ -9,6 +9,10 @@
 #include <QFile>
 #include <QResizeEvent>
 #include <QDebug>
+#include <QString>
+#include <QTextStream>
+#include <QDateTime>
+#include <QTimer>
 #include <vector>
 #include <d3d11.h>
 #include <d3dcompiler.h>

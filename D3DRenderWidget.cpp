@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "D3DRenderWidget.h"
-#include <QTimer>
 
 D3DRenderWidget::D3DRenderWidget(QWidget* parent)
     : QWidget(parent) {
@@ -153,12 +152,11 @@ void D3DRenderWidget::render() {
     float screenHeight = static_cast<float>(height());
     float screenWidth = static_cast<float>(width());
 
-    float yCursor = 1.0f; // Top of screen in NDC
+    float yCursor = 1.0f;
     for (size_t i = 0; i < textures.size(); ++i) {
         float texW = static_cast<float>(textures[i].width);
         float texH = static_cast<float>(textures[i].height);
 
-        // Convert texture size from pixels to NDC ([-1, +1])
         float ndcW = (texW / screenWidth) * 2.0f * zoom;
         float ndcH = (texH / screenHeight) * 2.0f * zoom;
 
@@ -242,12 +240,10 @@ void D3DRenderWidget::wheelEvent(QWheelEvent* event) {
     float zoomFactor = (event->angleDelta().y() > 0) ? 1.1f : 0.9f;
     zoom *= zoomFactor;
     zoom = std::clamp(zoom, 0.1f, 10.0f);
-    // Convert screen to NDC
     float x = event->position().x() / width();
     float y = event->position().y() / height();
     float ndcX = x * 2.0f - 1.0f;
     float ndcY = 1.0f - y * 2.0f;
-    // Convert to world-space before and after zoom
     QPointF before = (QPointF(ndcX, ndcY) - panOffset) / oldZoom;
     QPointF after = (QPointF(ndcX, ndcY) - panOffset) / zoom;
     panOffset += (after - before) * zoom;

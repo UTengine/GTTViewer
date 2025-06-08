@@ -1,9 +1,4 @@
 #pragma once
-#include <QString>
-#include <QFile>
-#include <QTextStream>
-#include <QDateTime>
-#include <QDebug>
 
 class DebugLogger {
 public:

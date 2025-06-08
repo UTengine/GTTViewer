@@ -1,6 +1,4 @@
 #pragma once
-#include <QWidget>
-#include <d3d11.h>
 #include "GTTLoader.h"
 
 struct Vertex {
