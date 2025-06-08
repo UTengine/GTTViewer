@@ -20,9 +20,8 @@ Messageboxes
 Show offsets of every beginning texture you can use HXD hex editors to replace them by going to the offset addresses.
 DX11
 Shaders
-Multi textures GTT NTF3-NTF7-Format 21 & 22
-Single textures DXT NTF3-NTF7 (Format 21 & 22 ??? not tested)
-
+Multi textures GTT NTF3-NTF7 (Format 21 & 22 ??? not tested)
+Single textures DXT NTF3-NTF7-Format 21 & 22
 Hero Online compatability:
 
 ![image](https://github.com/user-attachments/assets/3218335b-e706-42b9-b4c7-42a210ab6a32)
