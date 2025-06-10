@@ -79,9 +79,13 @@ LoadedTexture GTTLoader::LoadTextureAtOffset(ID3D11Device* device, const QByteAr
         uint32_t mipH = std::max(header.nHeight >> i, 1u);
         size_t size = (dxgiFormat >= DXGI_FORMAT_BC1_UNORM && dxgiFormat <= DXGI_FORMAT_BC3_UNORM)
             ? ((mipW + 3) / 4) * ((mipH + 3) / 4) * (dxgiFormat == DXGI_FORMAT_BC1_UNORM ? 8 : 16)
-            : mipW * mipH * ((header.Format == 21) ? 2 : 4);
+            : mipW * mipH * ((header.Format == 21) ? 4 : 4);
 
-        if (ptr + size > raw + data.size()) return result;
+        if (header.Format == 21) {
+
+        }
+
+        //if (ptr + size > raw + data.size()) return result; disable it for now
 
         mipData[i].resize(size);
         memcpy(mipData[i].data(), ptr, size);
@@ -99,9 +103,11 @@ LoadedTexture GTTLoader::LoadTextureAtOffset(ID3D11Device* device, const QByteAr
                 return result;
             }
         }
-
         if (header.Format == 22)
-            mipData[i] = GTTLoader::ConvertA4R4G4B4ToR8G8B8A8(mipData[i].data(), mipW, mipH);
+        {
+            uint32_t mipW = std::max(header.nWidth >> i, 1u);
+            uint32_t mipH = std::max(header.nHeight >> i, 1u);
+        }
     }
     // So if we actually read these instead, uncompressed fallback the image which would have been sharper lol..
     // We don't care anyway we are only writing a viewer not editor, I will just apply anisotropic filtering to the rendered images instead not the best option but who cares.
@@ -144,6 +150,11 @@ LoadedTexture GTTLoader::LoadTextureAtOffset(ID3D11Device* device, const QByteAr
     desc.Height = header.nHeight;
     desc.MipLevels = 1; // We are clamping mip lod to 0 because some have invalid data and we don't care about as this is not a editor but viewer and parser instead...
     desc.ArraySize = 1;
+
+    if (header.Format == DXGI_FORMAT_B8G8R8A8_UNORM)
+    {
+        dxgiFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+    }
     desc.Format = dxgiFormat;
     desc.SampleDesc.Count = 1;
     desc.Usage = D3D11_USAGE_IMMUTABLE;
@@ -152,7 +163,7 @@ LoadedTexture GTTLoader::LoadTextureAtOffset(ID3D11Device* device, const QByteAr
     std::vector<D3D11_SUBRESOURCE_DATA> subs(mipLevels);
     for (uint32_t i = 0; i < mipLevels; ++i) {
         uint32_t mipW = std::max(header.nWidth >> i, 1u);
-        size_t bpp = (header.Format == 21) ? 2 : 4;
+        size_t bpp = (header.Format == 21) ? 4 : 4;
         subs[i].pSysMem = mipData[i].data();
         subs[i].SysMemPitch = (dxgiFormat >= DXGI_FORMAT_BC1_UNORM && dxgiFormat <= DXGI_FORMAT_BC3_UNORM)
             ? ((mipW + 3) / 4) * ((dxgiFormat == DXGI_FORMAT_BC1_UNORM) ? 8 : 16)
@@ -181,31 +192,72 @@ LoadedTexture GTTLoader::LoadTextureAtOffset(ID3D11Device* device, const QByteAr
 
 DXGI_FORMAT GTTLoader::ConvertToDXGIFormat(uint32_t format) {
     switch (format) {
-        case 0x31545844: return DXGI_FORMAT_BC1_UNORM;
-        case 0x33545844: return DXGI_FORMAT_BC2_UNORM;
-        case 0x35545844: return DXGI_FORMAT_BC3_UNORM;
-        case 21: return DXGI_FORMAT_B5G5R5A1_UNORM;
-        case 22: return DXGI_FORMAT_R8G8B8A8_UNORM;
-        case 23: return DXGI_FORMAT_B8G8R8X8_UNORM;
-        case 20: return DXGI_FORMAT_R8G8B8A8_UNORM;
+        case 827611204: return DXGI_FORMAT_BC1_UNORM; // DXT1
+        case 844388420: return DXGI_FORMAT_BC2_UNORM; // DXT2
+        case 861165636: return DXGI_FORMAT_BC2_UNORM; // DXT3
+        case 877942852: return DXGI_FORMAT_BC3_UNORM; // DXT4
+        case 894720068: return DXGI_FORMAT_BC3_UNORM; // DXT5
+        case 20: return DXGI_FORMAT_R8G8B8A8_UNORM; // R8G8B8A 32-bit ARGB pixel format, with alpha, that uses 8 bits per channel.
+        case 21: return DXGI_FORMAT_B8G8R8A8_UNORM; // A8R8G8B8 A 24-bit RGB pixel format that uses 8 bits per channel.
+        case 22: return DXGI_FORMAT_B8G8R8X8_UNORM; // A 32 - bit RGB pixel format that reserves 8 bits for each color.
+        case 23: return DXGI_FORMAT_B5G6R5_UNORM; // A 16-bit RGB pixel format that uses 5 bits for red, 6 bits for green, and 5 bits for blue.
         default: return DXGI_FORMAT_UNKNOWN;
     }
 }
 
-std::vector<uint8_t> GTTLoader::ConvertA4R4G4B4ToR8G8B8A8(const uint8_t* src, uint32_t width, uint32_t height) {
-    std::vector<uint8_t> dst(width * height * 4);
-    const uint16_t* pixels = reinterpret_cast<const uint16_t*>(src);
-    for (uint32_t i = 0; i < width * height; i++) {
-        uint16_t pixel = pixels[i];
-        dst[i * 4 + 0] = static_cast<uint8_t>((pixel & 0x0F00) >> 4);  // R
-        dst[i * 4 + 1] = static_cast<uint8_t>((pixel & 0x00F0));       // G
-        dst[i * 4 + 2] = static_cast<uint8_t>((pixel & 0x000F) << 4);  // B
-        dst[i * 4 + 3] = static_cast<uint8_t>((pixel & 0xF000) >> 8);  // A
-    }
-    return dst;
-}
+//std::vector<uint8_t> GTTLoader::ConvertA4R4G4B4ToR8G8B8A8(const uint8_t* src, uint32_t width, uint32_t height) {
+//    std::vector<uint8_t> dst(width * height * 4);
+//    const uint16_t* pixels = reinterpret_cast<const uint16_t*>(src);
+//    for (uint32_t i = 0; i < width * height; i++) {
+//        uint16_t pixel = pixels[i];
+//        dst[i * 4 + 0] = static_cast<uint8_t>((pixel & 0x0F00) >> 4);  // R
+//        dst[i * 4 + 1] = static_cast<uint8_t>((pixel & 0x00F0));       // G
+//        dst[i * 4 + 2] = static_cast<uint8_t>((pixel & 0x000F) << 4);  // B
+//        dst[i * 4 + 3] = static_cast<uint8_t>((pixel & 0xF000) >> 8);  // A
+//    }
+//    return dst;
+//}
 
 uint32_t GTTLoader::CalculateMipLevels(uint32_t width, uint32_t height, bool hasMips) {
     if (!hasMips) return 1;
     return static_cast<uint32_t>(std::log2(std::max(width, height))) + 1;
+}
+
+std::vector<uint8_t> GTTLoader::ConvertA8R8G8B8ToB8G8R8A8(const uint8_t* src, uint32_t width, uint32_t height) {
+    const size_t pixelCount = static_cast<size_t>(width) * height;
+    std::vector<uint8_t> dst(pixelCount * 4);
+
+    for (size_t i = 0; i < pixelCount; ++i) {
+        const uint8_t* p = src + i * 4;
+
+        // Format 21 (A8R8G8B8) is laid out in memory as BGRA
+        uint8_t b = p[0];
+        uint8_t g = p[1];
+        uint8_t r = p[2];
+        uint8_t a = p[3];
+
+        // Convert to B8G8R8A8
+        dst[i * 4 + 0] = b;
+        dst[i * 4 + 1] = g;
+        dst[i * 4 + 2] = r;
+        dst[i * 4 + 3] = a;
+    }
+
+    return dst;
+}
+
+std::vector<uint8_t> GTTLoader::ConvertA1R5G5B5ToR8G8B8A8(const uint8_t* src, uint32_t width, uint32_t height) {
+    std::vector<uint8_t> dst(width * height * 4);
+    const uint32_t* srcPixels = reinterpret_cast<const uint32_t*>(src);
+    for (uint32_t i = 0; i < width * height; i++) {
+        uint32_t pixel = srcPixels[i];
+        uint8_t b = (pixel >> 0) & 0xFF;
+        uint8_t g = (pixel >> 8) & 0xFF;
+        uint8_t r = (pixel >> 16) & 0xFF;
+        dst[i * 4 + 0] = r;
+        dst[i * 4 + 1] = g;
+        dst[i * 4 + 2] = b;
+        dst[i * 4 + 3] = 0xFF; // opaque
+    }
+    return dst;
 }
