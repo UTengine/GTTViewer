@@ -6,9 +6,11 @@
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+extern int stbi_write_png_compression_level;
 
 LoadedTexture GTTLoader::LoadTextureAtOffset(ID3D11Device* device, const QByteArray& data, qint64 offset, const QString& baseName, uint32_t index)
 {
+    stbi_write_png_compression_level = 0;
     LoadedTexture result = { nullptr, 0, 0 };
     if (!device || offset < 0 || offset + sizeof(NTF3Header) > data.size())
     {
