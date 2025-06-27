@@ -5,23 +5,21 @@ Credits Wincrypt class: Twostars
 Rest of the project: Tahsin
 
 Issues:
-Too high miplevel/lodlevel will make the rendered textures output invalid picture data,
-either I forgot to decrypt some certain miplevel or its caused by dynamically created mips,
-it is not an issue for the use case and I forced it to use the highest miplevel combined with antialiasing 8x
-Blending issues after adding support for format 21 hero online.....
-Might release v0.3 one of these days..
+You can open issues and contact me...
 
 Features:
+Settings file with last known directory
+Statusbar with subdir and filename
+Auto rowing when multiple textures exceed window width
 Zoom works
 Panning works
 LogFile works
-Debug messages
-Messageboxes
-Show offsets of every beginning texture you can use HXD hex editors to replace them by going to the offset addresses.
-DX11
-Shaders
-Multi textures GTT NTF3-NTF7 (Format 21 & 22 ??? not tested)
-Single textures DXT NTF3-NTF7-Format 21 & 22
+Debug messages/Messageboxes
+PNG export
+Show offsets of every beginning texture you can use HXD hex editors to replace them with exported conversion to DXT by going to the offset addresses.
+DX11/Shaders
+Multi textures GTT NTF3-NTF7
+Single textures NTF3-NTF7 DXT1-5 & fmt 20-26
 Hero Online compatability:
 
 ![image](https://github.com/user-attachments/assets/3218335b-e706-42b9-b4c7-42a210ab6a32)
