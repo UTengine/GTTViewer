@@ -16,9 +16,10 @@ public:
 
     float zoom = 1.0f;
     QPoint lastMousePos;
-    QPointF panOffset = { 0.f, 0.f };  // in NDC units
+    bool dragging = false;
+    QPointF panOffset = { 0.f, 0.f };
 
-    void loadTextures(const QByteArray& rawData, const QVector<qint64>& offsets);
+    void loadTextures(const QByteArray& rawData, const QVector<qint64>& offsets, const QString& baseName);
     ID3D11Device* getDevice() const { return device; }
 
 protected:

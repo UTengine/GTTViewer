@@ -13,6 +13,9 @@ MainWindow::MainWindow(QWidget* parent): QMainWindow(parent), ui(new Ui::MainWin
     d3dWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     connect(ui->actionOpen_GTT, &QAction::triggered, this, &MainWindow::onOpenGTT);
     connect(ui->actionAbout, &QAction::triggered, this, &MainWindow::onAbout);
+    statusLabel = new QLabel(this);
+    statusBar()->addPermanentWidget(statusLabel);
+    statusLabel->setText("Ready");
 }
 
 MainWindow::~MainWindow()
@@ -34,7 +37,8 @@ void MainWindow::onAbout()
 
 void MainWindow::onOpenGTT()
 {
-    QString fileName = QFileDialog::getOpenFileName(this, "Open GTT File", "", "GTT Files (*.GTT || *.DXT)");
+    QString initialDir = readLastDirectory();
+    QString fileName = QFileDialog::getOpenFileName(this, "Open GTT File", initialDir, "GTT Files (*.GTT *.DXT)");
     if (fileName.isEmpty()) return;
     QFile file(fileName);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -84,7 +88,15 @@ void MainWindow::onOpenGTT()
     DebugLogger::log(QString("FileName: %1").arg(fileName));
     DebugLogger::log(QString("Loading %1 textures").arg(textureOffsets.size()));
 #endif
-    d3dWidget->loadTextures(rawData, textureOffsets);
+
+    QString fileInfo = QFileInfo(fileName).fileName();
+    QString folder = QFileInfo(fileName).dir().dirName();
+    statusLabel->setText(QString("Opened: %1 (%2 textures)").arg(folder + "\\" + fileInfo).arg(textureOffsets.size()));
+
+    saveLastDirectory(QFileInfo(fileName).absolutePath());
+
+    QString baseName = QFileInfo(fileName).completeBaseName();
+    d3dWidget->loadTextures(rawData, textureOffsets, baseName);
 }
 
 QPixmap MainWindow::loadAppIcon(int size)
@@ -93,7 +105,35 @@ QPixmap MainWindow::loadAppIcon(int size)
             IMAGE_ICON,size,size,LR_DEFAULTCOLOR)); // 101 = IDI_APP_ICON
     if (!hIcon)
         return QPixmap();
-    QImage image = QImage::fromHICON(hIcon); // Convert HICON to QPixmap using Qt 6's QImage
+    QImage image = QImage::fromHICON(hIcon);
     DestroyIcon(hIcon);
     return QPixmap::fromImage(image);
+}
+
+QString MainWindow::readLastDirectory()
+{
+    QFile file("settings.txt");
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) 
+    {
+        QTextStream in(&file);
+        while (!in.atEnd()) 
+        {
+            QString line = in.readLine();
+            if (line.startsWith("last_directory=")) 
+            {
+                return line.section('=', 1);
+            }
+        }
+    }
+    return ""; // fallback
+}
+
+void MainWindow::saveLastDirectory(const QString& path)
+{
+    QFile file("settings.txt");
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) 
+    {
+        QTextStream out(&file);
+        out << "last_directory=" << path << "\n";
+    }
 }

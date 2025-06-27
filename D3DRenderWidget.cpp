@@ -69,14 +69,16 @@ void D3DRenderWidget::initializeD3D() {
     device->CreateInputLayout(layout, 2, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &inputLayout);
     vsBlob->Release();
 
-    D3D11_SAMPLER_DESC samp = {}; // anisotropic filtering
-    samp.Filter = D3D11_FILTER_ANISOTROPIC;
-    samp.AddressU = samp.AddressV = samp.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-    samp.MaxAnisotropy = 8;
-    samp.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-    samp.MinLOD = 0;
+    D3D11_SAMPLER_DESC samp = {};
+    samp.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samp.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samp.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samp.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
     samp.MipLODBias = 0.0f;
-    samp.MaxLOD = 1;  // Clamp to lod 0 because it still tries to sample invalid miplevels encrypted we will do it elsewhere too
+    samp.MaxAnisotropy = 1;
+    samp.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    samp.MinLOD = 0;
+    samp.MaxLOD = D3D11_FLOAT32_MAX;
     device->CreateSamplerState(&samp, &samplerState);
 
     D3D11_BUFFER_DESC bd = {};
@@ -137,7 +139,7 @@ void D3DRenderWidget::resizeEvent(QResizeEvent*) {
 void D3DRenderWidget::render() {
     if (!context || !renderTargetView) return;
 
-    float clearColor[] = { 0.1f, 0.1f, 0.3f, 1.f };
+    float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
     context->ClearRenderTargetView(renderTargetView, clearColor);
 
     context->OMSetRenderTargets(1, &renderTargetView, nullptr);
@@ -150,34 +152,35 @@ void D3DRenderWidget::render() {
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
 
-    float screenHeight = static_cast<float>(height());
     float screenWidth = static_cast<float>(width());
+    float screenHeight = static_cast<float>(height());
 
-    float yCursor = 1.0f; // Top of screen in NDC
+    float cursorX = 0.0f;
+    float cursorY = 0.0f;
+    float rowHeight = 0.0f;
+
     for (size_t i = 0; i < textures.size(); ++i) {
-        float texW = static_cast<float>(textures[i].width);
-        float texH = static_cast<float>(textures[i].height);
-
-        // Convert texture size from pixels to NDC ([-1, +1])
-        float ndcW = (texW / screenWidth) * 2.0f * zoom;
-        float ndcH = (texH / screenHeight) * 2.0f * zoom;
-
-        float left = -ndcW / 2.0f + panOffset.x();
-        float right = ndcW / 2.0f + panOffset.x();
-        float top = yCursor + panOffset.y();
-        float bottom = top - ndcH;
-
+        float texW = static_cast<float>(textures[i].width) * zoom;
+        float texH = static_cast<float>(textures[i].height) * zoom;
+        if (cursorX + texW > screenWidth) {
+            cursorX = 0.0f;
+            cursorY += rowHeight;
+            rowHeight = 0.0f;
+        }
+        rowHeight = std::max(rowHeight, texH);
+        float left = (cursorX / screenWidth) * 2.0f - 1.0f + panOffset.x();
+        float right = ((cursorX + texW) / screenWidth) * 2.0f - 1.0f + panOffset.x();
+        float top = 1.0f - (cursorY / screenHeight) * 2.0f + panOffset.y();
+        float bottom = 1.0f - ((cursorY + texH) / screenHeight) * 2.0f + panOffset.y();
         setQuadVertices(left, right, top, bottom);
-        yCursor -= ndcH;
-
         D3D11_MAPPED_SUBRESOURCE mapped;
         context->Map(vertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
         memcpy(mapped.pData, quadVertices, sizeof(quadVertices));
         context->Unmap(vertexBuffer, 0);
-
         context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
         context->PSSetShaderResources(0, 1, &textures[i].srv);
         context->Draw(6, 0);
+        cursorX += texW;
     }
     swapChain->Present(1, 0);
 }
@@ -191,11 +194,12 @@ void D3DRenderWidget::setQuadVertices(float l, float r, float t, float b) {
     quadVertices[5] = { l, b, 0.f, 0.f, 1.f };
 }
 
-void D3DRenderWidget::loadTextures(const QByteArray& rawData, const QVector<qint64>& offsets) {
+void D3DRenderWidget::loadTextures(const QByteArray& rawData, const QVector<qint64>& offsets, const QString& baseName) {
     textures.clear();
 
-    for (qint64 offset : offsets) {
-        LoadedTexture tex = GTTLoader::LoadTextureAtOffset(device, rawData, offset);
+    for (uint32_t i = 0; i < offsets.size(); ++i) {
+        qint64 offset = offsets[i];
+        LoadedTexture tex = GTTLoader::LoadTextureAtOffset(device, rawData, offset, baseName, i);
         if (tex.srv) {
             textures.push_back(tex);
 
@@ -226,15 +230,23 @@ void D3DRenderWidget::loadTextures(const QByteArray& rawData, const QVector<qint
 
 
 void D3DRenderWidget::mousePressEvent(QMouseEvent* event) {
-    lastMousePos = event->pos();
+    if (event->button() == Qt::LeftButton) 
+    {
+        dragging = true;
+        lastMousePos = event->pos();
+        setCursor(Qt::ClosedHandCursor);
+    }
 }
 
 void D3DRenderWidget::mouseMoveEvent(QMouseEvent* event) {
-    QPoint delta = event->pos() - lastMousePos;
-    lastMousePos = event->pos();
-    float dx = 2.0f * delta.x() / width();
-    float dy = -2.0f * delta.y() / height();
-    panOffset += QPointF(dx, dy) / zoom;
+    if (dragging)
+    {
+        QPoint delta = event->pos() - lastMousePos;
+        lastMousePos = event->pos();
+        float dx = 2.0f * delta.x() / width() / zoom;
+        float dy = -2.0f * delta.y() / height() / zoom;
+        panOffset += QPointF(dx, dy);
+    }
 }
 
 void D3DRenderWidget::wheelEvent(QWheelEvent* event) {

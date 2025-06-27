@@ -15,6 +15,9 @@
 #include <iostream>
 #include <windows.h> // for wincrypt
 #include <wincrypt.h>
+#include <cmath>
+#include <cassert>
+#include "CWinCrypt.h"
 #if QT_VERSION >= 0x050000
 #include <QtWidgets/QMainWindow>
 #else
